@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+start(){
+    echo "Start..."
+}
+
+help(){
+    echo "$0:       Magane a gitlab flow features."
+    echo "  help: Show this message."
+}
+
+command=${1:help}
+shift
+case "$command" in
+        s | start) start $@ ;;
+        h | help) help ;;
+        *) help ;;
+esac
