@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
+BASEDIR=$(dirname $0)
+
+source $BASEDIR/gitlab-common.sh
+
 start(){
     echo "Start..."
+    BRANCH=${1:-$(get_current_branch)}
+    echo $BRANCH
+    echo $(get_project_id)
 }
 
 help(){
