@@ -3,6 +3,8 @@
 import sys, json
 
 def get_from(json_str, key):
+    if not json_str:
+        return ""
     json_data = json.loads(json_str)
     value = ""
     if (json_data.has_key(key)):
@@ -19,6 +21,8 @@ def __url_to_obj(data_str):
     return data
 
 def to_json(data_str):
+    if not data_str:
+        return ""
     data_obj = __url_to_obj(data_str)
     json_data = json.dumps(data_obj)
     return json_data

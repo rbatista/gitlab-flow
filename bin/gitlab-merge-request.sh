@@ -88,9 +88,14 @@ create_merge_request() {
     echo $DATA
 
     RESPONSE=`curl -sk --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -H "Content-Type: application/json" -X POST -d "$DATA" "$API_URL"`
-    RESPONSE2=$( echo $RESPONSE | grep "id")
+    RESPONSE2=$( echo $RESPONSE | grep "iid")
     if [ "x$RESPONSE2" = "x" ]; then
-        MSG=$($BASEDIR/gitlab-json.py "get_from" "$RESPONSE" "message")
+        MSG=$( echo $RESPONSE | grep "\"message\":" )
+        if [ "x$MSG" != "x" ]; then
+            MSG=$($BASEDIR/gitlab-json.py "get_from" "$RESPONSE" "message")
+        else
+            MSG=$RESPONSE
+        fi
         echo "Error: $MSG"
         exit 1
     fi
