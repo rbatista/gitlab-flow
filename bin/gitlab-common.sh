@@ -46,6 +46,12 @@ get_private_token() {
 }
 
 get_project_id() {
+    PROJECT_ID=$(git config --get gitlab.project-id)
+    if [ "x$PROJECT_ID" != "x" ]; then
+        echo $PROJECT_ID
+        return
+    fi
+
     REMOTE_URL=$(git config --get remote.origin.url)
     if [ $REMOTE_URL = "https*" ]; then
         REMOTE_URL=$(echo $REMOTE_URL | grep "https" | sed -e "s/https\/\/://g")
@@ -59,7 +65,27 @@ get_project_id() {
     PRIVATE_TOKEN=$(get_private_token)
     API_URL="$(resolve_api_url)projects/${NAMESPACE}${ENCODED_SLASH}${PROJECT}"
     PROJECT_DATA=`curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -sk "$API_URL"`
-    echo $PROJECT_DATA
+#    echo $PROJECT_DATA
+
+    MR_REGEX="\"merge_requests_enabled\":(true|false),"
+    MR_ENABLE=$(echo $PROJECT_DATA | grep "\"merge_requests_enabled\"" | sed -e "s/^.*merge_requests_enabled\":\(true\|false\),.*/\1/g")
+    MR_ENABLE=${MR_ENABLE:-'Undefined'}
+    #echo -e "Merge Request: $MR_ENABLE\n"
+    if [ $MR_ENABLE = "false" ]; then
+        echo "Merge Request are disabled."
+        exit 1
+    fi
+
+    PROJECT_ID=$(echo $PROJECT_DATA | grep "\"id\"" | sed -e "s/^.*\"id\":\([0-9]\+\),.*namespace.*/\1/g")
+    PROJECT_ID=$(echo $PROJECT_ID | grep "^[0-9]\+$")
+    if [ "x$PROJECT_ID" = "x" ]; then
+        echo "The project was not found."
+        exit 1;
+    fi
+
+    git config --add --local gitlab.project-id "$PROJECT_ID"
+
+    echo $PROJECT_ID
 }
 
 get_current_branch() {
