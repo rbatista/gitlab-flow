@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 
 BASEDIR=$(dirname $0)
+DEFAULT_TARGET_BRANCH='develop'
 
 source $BASEDIR/gitlab-common.sh
+source $BASEDIR/gitlab-merge-request.sh
 
 start(){
-    echo "Start..."
-    BRANCH=${1:-$(get_current_branch)}
-    echo $BRANCH
-    echo $(get_project_id)
+    echo "Starting merge request..."
+
+    BRANCH_SOURCE=${1:-$(get_current_branch)}
+    echo "Source branch: $BRANCH_SOURCE"
+
+    BRANCH_TARGET=${2:-${DEFAULT_TARGET_BRANCH}}
+
+    create_merge_request $BRANCH_SOURCE $BRANCH_TARGET
 }
 
 help(){

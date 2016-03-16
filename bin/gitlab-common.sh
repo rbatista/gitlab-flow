@@ -46,7 +46,7 @@ get_private_token() {
 }
 
 get_project_id() {
-    PROJECT_ID=$(git config --get gitlab.project-id)
+    PROJECT_ID=$(git config --get gitlab.project.id)
     if [ "x$PROJECT_ID" != "x" ]; then
         echo $PROJECT_ID
         return
@@ -76,19 +76,60 @@ get_project_id() {
         exit 1
     fi
 
-    PROJECT_ID=$(echo $PROJECT_DATA | grep "\"id\"" | sed -e "s/^.*\"id\":\([0-9]\+\),.*namespace.*/\1/g")
+    #PROJECT_ID=$(echo $PROJECT_DATA | grep "\"id\"" | sed -e "s/^.*\"id\":\([0-9]\+\),.*namespace.*/\1/g")
+    PROJECT_ID=$($BASEDIR/gitlab-json.py "get_from" "$PROJECT_DATA" "id")
     PROJECT_ID=$(echo $PROJECT_ID | grep "^[0-9]\+$")
     if [ "x$PROJECT_ID" = "x" ]; then
         echo "The project was not found."
         exit 1;
     fi
 
-    git config --add --local gitlab.project-id "$PROJECT_ID"
+    git config --add --local gitlab.project.id "$PROJECT_ID"
+    git config --add --local gitlab.project.namespace "$NAMESPACE"
+    git config --add --local gitlab.project.name "$PROJECT"
 
     echo $PROJECT_ID
 }
 
 get_current_branch() {
-    CURRENT_BRANCH=$(git name-rev --name-only HEAD)
+    CURRENT_BRANCH=$(git branch | grep "*" | sed -e "s/*\s//g")
     echo $CURRENT_BRANCH
+}
+
+get_parent_branch() {
+    BRANCH=${1:-$(get_current_branch)}
+
+    # ref: http://stackoverflow.com/a/17843908
+    # 1. Display a textual history of all commits, including remote branches.
+    PARENT_BRANCH=$(git show-branch -a)
+    # 2. Ancestors of the current commit are indicated by a star. Filter out everything else.
+    PARENT_BRANCH=$(echo $PARENT_BRANCH | grep "\*")
+    # 3. Ignore all the commits in the current branch.
+    PARENT_BRANCH=$(echo $PARENT_BRANCH | grep -v "$CURRENT_BRANCH")
+    # 4. The first result will be the nearest ancestor branch. Ignore the other results.
+    PARENT_BRANCH=$(echo $PARENT_BRANCH | head -n1)
+    # 5. Branch names are displayed [in brackets]. Ignore everything outside the brackets, and the brackets.
+    PARENT_BRANCH=$(echo $PARENT_BRANCH | sed 's/.*\[\(.*\)\].*/\1/')
+    # 6. Sometimes the branch name will include a ~# or ^# to indicate how many commits are between the referenced commit and the branch tip. We don't care. Ignore them.
+    PARENT_BRANCH=$(echo $PARENT_BRANCH | sed 's/[\^~].*//')
+
+    echo $PARENT_BRANCH
+}
+
+get_commits_between_branchs() {
+    FROM=${1:-$(get_current_branch)}
+    TO=$(get_parent_branch $BRANCH)
+
+    COMMITS_DIFF=$(git log ${FROM}..${TO} --oneline)
+    echo $COMMITS_DIFF
+}
+
+get_first_commit_in_branch() {
+    BRANCH=${1:-$(get_current_branch)}
+    PARENT_BRANCH=$(get_parent_branch $BRANCH)
+
+    COMMITS_DIFF=$(get_commit_diff_between_branchs ${PARENT_BRANCH} ${BRANCH})
+    FIRST_COMMIT=$(echo $COMMITS_DIFF | tail -1)
+
+    echo $FIRST_COMMIT
 }
