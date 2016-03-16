@@ -30,7 +30,11 @@ get_private_token() {
 
     API_URL="$(resolve_api_url)session"
     echo "Getting private token for user $USER from $ORIGIN_URL"
-    USER_DATA=`curl -skX POST "$API_URL?login=$USER&password=$PASSWORD"`
+    USER_DATA=$( curl -sSkX POST "$API_URL?login=$USER&password=$PASSWORD" 2>&1 )
+    if [ $? -ne 0 ]; then
+        echo "Error: $USER_DATA"
+        exit 1
+    fi
 
     PRIVATE_TOKEN=$($BASEDIR/gitlab-json.py "get_from" "$USER_DATA" "private_token")
 
@@ -64,7 +68,11 @@ get_project_id() {
 
     PRIVATE_TOKEN=$(get_private_token)
     API_URL="$(resolve_api_url)projects/${NAMESPACE}${ENCODED_SLASH}${PROJECT}"
-    PROJECT_DATA=`curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -sk "$API_URL"`
+    PROJECT_DATA=$(curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -sSk "$API_URL" 2>&1 )
+    if [ $? -ne 0 ]; then
+        echo "Error: $PROJECT_DATA"
+        exit 1
+    fi
 #    echo $PROJECT_DATA
 
     MR_REGEX="\"merge_requests_enabled\":(true|false),"
