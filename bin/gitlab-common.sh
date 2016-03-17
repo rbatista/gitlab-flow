@@ -30,7 +30,11 @@ get_private_token() {
 
     API_URL="$(resolve_api_url)session"
     echo "Getting private token for user $USER from $ORIGIN_URL"
-    USER_DATA=`curl -skX POST "$API_URL?login=$USER&password=$PASSWORD"`
+    USER_DATA=$( curl -sSkX POST "$API_URL?login=$USER&password=$PASSWORD" 2>&1 )
+    if [ $? -ne 0 ]; then
+        echo "Error: $USER_DATA"
+        exit 1
+    fi
 
     PRIVATE_TOKEN=$($BASEDIR/gitlab-json.py "get_from" "$USER_DATA" "private_token")
 
@@ -53,30 +57,29 @@ get_project_id() {
     fi
 
     REMOTE_URL=$(git config --get remote.origin.url)
-    if [ $REMOTE_URL = "https*" ]; then
-        REMOTE_URL=$(echo $REMOTE_URL | grep "https" | sed -e "s/https\/\/://g")
-    fi
-    REMOTE_URL=$(echo $REMOTE_URL | grep ".git" | sed -e "s/\.git//g")
-    REMOTE_URL=$(echo $REMOTE_URL | grep ":" | sed -e "s/:/\//g")
+    REMOTE_URL=$(echo $REMOTE_URL | sed -e "s/^https:\/\///g")
+    REMOTE_URL=$(echo $REMOTE_URL | sed -e "s/\.git$//g")
+    REMOTE_URL=$(echo $REMOTE_URL | sed -e "s/:[^0-9]/\//g")
     NAMESPACE=$(echo $REMOTE_URL | grep "/" | cut -d/ -f2)
     PROJECT=$(echo $REMOTE_URL | grep "/" | cut -d/ -f3)
     ENCODED_SLASH="%2F"
 
     PRIVATE_TOKEN=$(get_private_token)
     API_URL="$(resolve_api_url)projects/${NAMESPACE}${ENCODED_SLASH}${PROJECT}"
-    PROJECT_DATA=`curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -sk "$API_URL"`
-#    echo $PROJECT_DATA
+    PROJECT_DATA=$(curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -sSk "$API_URL" 2>&1 )
+    if [ $? -ne 0 ]; then
+        echo "Error: $PROJECT_DATA"
+        exit 1
+    fi
 
     MR_REGEX="\"merge_requests_enabled\":(true|false),"
     MR_ENABLE=$(echo $PROJECT_DATA | grep "\"merge_requests_enabled\"" | sed -e "s/^.*merge_requests_enabled\":\(true\|false\),.*/\1/g")
     MR_ENABLE=${MR_ENABLE:-'Undefined'}
-    #echo -e "Merge Request: $MR_ENABLE\n"
     if [ $MR_ENABLE = "false" ]; then
         echo "Merge Request are disabled."
         exit 1
     fi
 
-    #PROJECT_ID=$(echo $PROJECT_DATA | grep "\"id\"" | sed -e "s/^.*\"id\":\([0-9]\+\),.*namespace.*/\1/g")
     PROJECT_ID=$($BASEDIR/gitlab-json.py "get_from" "$PROJECT_DATA" "id")
     PROJECT_ID=$(echo $PROJECT_ID | grep "^[0-9]\+$")
     if [ "x$PROJECT_ID" = "x" ]; then
