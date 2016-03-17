@@ -59,7 +59,7 @@ get_project_id() {
     REMOTE_URL=$(git config --get remote.origin.url)
     REMOTE_URL=$(echo $REMOTE_URL | sed -e "s/^https:\/\///g")
     REMOTE_URL=$(echo $REMOTE_URL | sed -e "s/\.git$//g")
-    REMOTE_URL=$(echo $REMOTE_URL | sed -e "s/:[^0-9]/\//g")
+    REMOTE_URL=$(echo $REMOTE_URL | sed -e "s/:\([^0-9]\)/\/\1/g")
     NAMESPACE=$(echo $REMOTE_URL | grep "/" | cut -d/ -f2)
     PROJECT=$(echo $REMOTE_URL | grep "/" | cut -d/ -f3)
     ENCODED_SLASH="%2F"
@@ -74,7 +74,7 @@ get_project_id() {
 
     MR_REGEX="\"merge_requests_enabled\":(true|false),"
     MR_ENABLE=$(echo $PROJECT_DATA | grep "\"merge_requests_enabled\"" | sed -e "s/^.*merge_requests_enabled\":\(true\|false\),.*/\1/g")
-    MR_ENABLE=${MR_ENABLE:-'Undefined'}
+    MR_ENABLE=${MR_ENABLE:-'false'}
     if [ $MR_ENABLE = "false" ]; then
         echo "Merge Request are disabled."
         exit 1
