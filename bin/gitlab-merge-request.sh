@@ -65,6 +65,10 @@ create_merge_request() {
     BRANCH_TARGET=$2
 
     PROJECT_ID=$(get_project_id)
+    if [ $? -ne 0 ]; then
+        echo "Project was not found: $PROJECT_ID";
+        exit 1
+    fi
 
     FILE_NAME=$(get_merge_request_data $BRANCH_SOURCE $BRANCH_TARGET)
     # TITLE is the first line
@@ -85,7 +89,6 @@ create_merge_request() {
 
     DATA="target_branch=$BRANCH_TARGET\,source_branch=$BRANCH_SOURCE\,title=$TITLE\,description=$DESCRIPTION"
     DATA=$($BASEDIR/gitlab-json.py "to_json" "$DATA")
-    echo $DATA
 
     RESPONSE=$( curl -sSk --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -H "Content-Type: application/json" -X POST -d "$DATA" "$API_URL" 2>&1 )
     if [ $? -ne 0 ]; then
